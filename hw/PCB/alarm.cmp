@@ -1,0 +1,276 @@
+Cmp-Mod V01 Created by CvPcb (2013-07-07 BZR 4022)-stable date = 11/08/2015 23:10:48
+
+BeginCmp
+TimeStamp = /55CA07BD;
+Reference = C1;
+ValeurCmp = 100uF;
+IdModule  = C1V5;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06DE;
+Reference = C2;
+ValeurCmp = 100uF;
+IdModule  = C1V5;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA07B7;
+Reference = C4;
+ValeurCmp = 10uF;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06D8;
+Reference = C5;
+ValeurCmp = 10uF;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0224;
+Reference = C6;
+ValeurCmp = 10uF;
+IdModule  = SM0805;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA07D5;
+Reference = C7;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06F6;
+Reference = C8;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0422;
+Reference = C9;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0796;
+Reference = C10;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06B7;
+Reference = C11;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F56A;
+Reference = C12;
+ValeurCmp = 100nF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA051D;
+Reference = C13;
+ValeurCmp = 1uF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0517;
+Reference = C14;
+ValeurCmp = 1uF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0502;
+Reference = C15;
+ValeurCmp = 1uF;
+IdModule  = SM0603;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0786;
+Reference = D1;
+ValeurCmp = DIODE;
+IdModule  = DIODE_SMA;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06A7;
+Reference = D2;
+ValeurCmp = DIODE;
+IdModule  = DIODE_SMA;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F4E4;
+Reference = D3;
+ValeurCmp = DIODE;
+IdModule  = DIODE_SMA;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FBC8;
+Reference = D4;
+ValeurCmp = LED_RGB_3;
+IdModule  = RGB_LED_10W;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FCFF;
+Reference = D5;
+ValeurCmp = LED_RGB_3;
+IdModule  = RGB_LED_10W;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FD05;
+Reference = D6;
+ValeurCmp = LED_RGB_3;
+IdModule  = RGB_LED_10W;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FD0B;
+Reference = D7;
+ValeurCmp = LED_RGB_3;
+IdModule  = RGB_LED_10W;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA0780;
+Reference = L1;
+ValeurCmp = uH;
+IdModule  = IND_12.5x12.5mm;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06A1;
+Reference = L2;
+ValeurCmp = uH;
+IdModule  = IND_12.5x12.5mm;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F4D5;
+Reference = L3;
+ValeurCmp = uH;
+IdModule  = IND_12.5x12.5mm;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F069;
+Reference = P1;
+ValeurCmp = CONN_2;
+IdModule  = SIL-2;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9EFF1;
+Reference = P2;
+ValeurCmp = CONN_2;
+IdModule  = SIL-2;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9EEE4;
+Reference = P3;
+ValeurCmp = CONN_10;
+IdModule  = SIL-10;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA290C;
+Reference = P4;
+ValeurCmp = CONN_8;
+IdModule  = pin_array_4x2;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F02F;
+Reference = R1;
+ValeurCmp = R;
+IdModule  = SM0603_Resistor;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA07AA;
+Reference = R2;
+ValeurCmp = 100k;
+IdModule  = SM0603_Resistor;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA06CB;
+Reference = R3;
+ValeurCmp = 100k;
+IdModule  = SM0603_Resistor;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA011F;
+Reference = R4;
+ValeurCmp = 100k;
+IdModule  = SM0603_Resistor;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FBE1;
+Reference = R5;
+ValeurCmp = R;
+IdModule  = SM1210L;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FBEE;
+Reference = R6;
+ValeurCmp = R;
+IdModule  = SM1210L;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9FBF4;
+Reference = R7;
+ValeurCmp = R;
+IdModule  = SM1210L;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA077A;
+Reference = U1;
+ValeurCmp = A6211;
+IdModule  = SO8_WITH_EP;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA069B;
+Reference = U2;
+ValeurCmp = A6211;
+IdModule  = SO8_WITH_EP;
+EndCmp
+
+BeginCmp
+TimeStamp = /55C9F4C6;
+Reference = U3;
+ValeurCmp = A6211;
+IdModule  = SO8_WITH_EP;
+EndCmp
+
+BeginCmp
+TimeStamp = /55CA67B9;
+Reference = U4;
+ValeurCmp = PDS1-S12-S5-M-TR;
+IdModule  = PDS1-S12-S5-M-TR;
+EndCmp
+
+EndListe
