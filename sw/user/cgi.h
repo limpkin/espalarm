@@ -5,6 +5,7 @@
 
 int cgiLed(HttpdConnData *connData);
 int cgiAlarm(HttpdConnData *connData);
+int discardcgiAlarm(HttpdConnData *connData);
 int tplLed(HttpdConnData *connData, char *token, void **arg);
 int tplAlarm(HttpdConnData *connData, char *token, void **arg);
 int tplCounter(HttpdConnData *connData, char *token, void **arg);

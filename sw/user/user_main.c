@@ -32,17 +32,20 @@ some pictures of cats.
 #include "gpio16.h"
 #include "user_main.h"
 
-
+static struct tm* current_time_dt;
 static char string_current_datetime[100];
 static char string_current_time[100];
 static time_t current_timestamp;
 static os_timer_t timer_second;
 static os_timer_t timer_alarmanim;
 typedef struct tm tm_struct;
+static bool alarm_discard = false;
 static bool time_fetched = false;
 static bool time_fetched_light = false;
 static bool stored_alarmdays[7];
 static uint32_t stored_alarmtime[2];
+static uint32_t stored_alarmcolor[3] = {0,0,100};
+static uint32_t stored_prep[3];
 static bool alarm_in_progress = false;
 static bool alarm_ack = false;
 
@@ -133,6 +136,7 @@ HttpdBuiltInUrl builtInUrls[]={
 	{"/index.tpl", cgiEspFsTemplate, tplCounter},
 	{"/led.cgi", cgiLed, NULL},
 	{"/alarm.cgi", cgiAlarm, NULL},
+	{"/discardalarm.cgi", discardcgiAlarm, NULL},
 	{"/flash/download", cgiReadFlash, NULL},
 #ifdef INCLUDE_FLASH_FNS
 	{"/flash/next", cgiGetFirmwareNext, &uploadParams},
@@ -241,10 +245,12 @@ char* ICACHE_FLASH_ATTR main_get_datetime(void)
 	return string_current_datetime;
 }
 
-void ICACHE_FLASH_ATTR store_alarm_settings(bool* days, uint32_t* time)
+void ICACHE_FLASH_ATTR store_alarm_settings(bool* days, uint32_t* time, uint32_t* color, uint32_t* prep)
 {
 	os_memcpy(stored_alarmdays, days, sizeof(stored_alarmdays)); 
 	os_memcpy(stored_alarmtime, time, sizeof(stored_alarmtime)); 
+	os_memcpy(stored_alarmcolor, color, sizeof(stored_alarmcolor)); 
+	os_memcpy(stored_prep, prep, sizeof(stored_prep)); 
 }
 
 bool* ICACHE_FLASH_ATTR get_alarmdays(void)
@@ -257,49 +263,44 @@ uint32_t* ICACHE_FLASH_ATTR get_alarmtime(void)
 	return stored_alarmtime;
 }
 
+uint32_t* ICACHE_FLASH_ATTR get_alarmcolor(void)
+{
+	return stored_alarmcolor;
+}
+
+uint32_t* ICACHE_FLASH_ATTR get_alarmprep(void)
+{
+	return stored_prep;
+}
+
 static uint32_t anim_sm;
 static uint32_t red_dc;
 static uint32_t blue_dc;
 static uint32_t green_dc;
 static uint32_t anim_counter_blink;
+static uint32_t anim_blinks;
 
 void ICACHE_FLASH_ATTR alarm_anim_tick(void)
 {
 	if(anim_sm == 0)
 	{
-		pwm_set_duty(blue_dc, LED_B_CHANNEL);
-		blue_dc += ALARM_ANIM_FADE_INC;
-		if(blue_dc > MAX_DUTY_C)
+		pwm_set_duty(red_dc * stored_alarmcolor[0] / 100, LED_R_CHANNEL);
+		pwm_set_duty(blue_dc * stored_alarmcolor[2] / 100, LED_B_CHANNEL);
+		pwm_set_duty(green_dc * stored_alarmcolor[1] / 100, LED_G_CHANNEL);
+		red_dc += (red_dc / ALARM_ANIM_FADE_DIV) + ALARM_ANIM_FADE_INC;
+		blue_dc += (blue_dc / ALARM_ANIM_FADE_DIV) + ALARM_ANIM_FADE_INC;
+		green_dc += (green_dc / ALARM_ANIM_FADE_DIV) + ALARM_ANIM_FADE_INC;
+		if((blue_dc > MAX_DUTY_C) || (red_dc > MAX_DUTY_C) || (green_dc > MAX_DUTY_C))
 		{
-			blue_dc = MAX_DUTY_C;
 			anim_sm++;
 		}			
 	}
-	if(anim_sm == 1)
+	else if(anim_sm == 1)
 	{
-		pwm_set_duty(red_dc, LED_R_CHANNEL);
-		red_dc += ALARM_ANIM_FADE_INC;
-		if(red_dc > MAX_DUTY_C)
-		{
-			red_dc = MAX_DUTY_C;
-			anim_sm++;
-		}			
-	}
-	if(anim_sm == 2)
-	{
-		pwm_set_duty(green_dc, LED_G_CHANNEL);
-		green_dc += ALARM_ANIM_FADE_INC;
-		if(green_dc > MAX_DUTY_C)
-		{
-			green_dc = MAX_DUTY_C;
-			anim_sm++;
-		}			
-	}
-	if(anim_sm == 3)
-	{
-		if(anim_counter_blink++ == 500/ALARM_ANIM_MS)
+		if(anim_counter_blink++ == 1000/ALARM_ANIM_MS)
 		{
 			anim_counter_blink = 0;
+			anim_blinks++;
 			if(pwm_get_duty(LED_B_CHANNEL) > 0)
 			{
 				pwm_set_duty(0, LED_R_CHANNEL);
@@ -312,11 +313,15 @@ void ICACHE_FLASH_ATTR alarm_anim_tick(void)
 				pwm_set_duty(MAX_DUTY_C, LED_G_CHANNEL);
 				pwm_set_duty(MAX_DUTY_C, LED_B_CHANNEL);
 			}
+			if(anim_blinks == 40)
+			{
+				anim_sm++;
+			}
 		}
 	}
 
-	// Check if the user pressed the button
-	if(gpio16_input_get() == 0)
+	// Check if the user pressed the button or animation is over
+	if(gpio16_input_get() == 0 || anim_sm == 2)
 	{
 		pwm_set_duty(0, LED_R_CHANNEL);
 		pwm_set_duty(0, LED_G_CHANNEL);
@@ -325,6 +330,7 @@ void ICACHE_FLASH_ATTR alarm_anim_tick(void)
 		red_dc = 0;
 		blue_dc = 0;
 		green_dc = 0;
+		anim_blinks = 0;
 		alarm_ack = true;
 		alarm_in_progress = false;
 		os_timer_disarm(&timer_alarmanim);
@@ -333,13 +339,97 @@ void ICACHE_FLASH_ATTR alarm_anim_tick(void)
 	pwm_start();
 }
 
+int32_t ICACHE_FLASH_ATTR get_nbmins_before_alarm(void)
+{
+	bool alarm_discard_copy = alarm_discard;
+	tm_struct alarm_tm;
+
+	if(time_fetched)
+	{
+		os_memcpy(&alarm_tm, current_time_dt, sizeof(alarm_tm));
+		alarm_tm.tm_hour = stored_alarmtime[0];
+		alarm_tm.tm_min = stored_alarmtime[1];
+
+		// Is the alarm today ?
+		if(stored_alarmdays[current_time_dt->tm_wday] && ((current_time_dt->tm_hour < stored_alarmtime[0]) || (current_time_dt->tm_hour == stored_alarmtime[0] && current_time_dt->tm_min < stored_alarmtime[1])))
+		{	
+			if(alarm_discard_copy)
+			{
+				for(uint8_t i = 1; i < 8; i++)
+				{
+					if(stored_alarmdays[(current_time_dt->tm_wday+i)%7])
+					{
+						alarm_tm.tm_mday += i;
+						mktime(&alarm_tm);
+						return (int32_t)difftime(mktime(&alarm_tm), mktime(current_time_dt))/60;
+					}
+				}
+
+				return -1;
+			}
+			else
+			{	
+				return (int32_t)difftime(mktime(&alarm_tm), mktime(current_time_dt))/60;
+			}
+		}
+		else
+		{
+			for(uint8_t i = 1; i < 8; i++)
+			{
+				if(stored_alarmdays[(current_time_dt->tm_wday+i)%7])
+				{
+					alarm_tm.tm_mday += i;
+					mktime(&alarm_tm);
+					return (int32_t)difftime(mktime(&alarm_tm), mktime(current_time_dt))/60;
+				}
+			}
+
+			return -1;
+		}
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+void ICACHE_FLASH_ATTR discard_next_alarm(void)
+{
+	alarm_discard = true;
+	pwm_set_duty(0, LED_R_CHANNEL);
+	pwm_set_duty(0, LED_G_CHANNEL);
+	pwm_set_duty(0, LED_B_CHANNEL);
+	pwm_start();
+}
+
 void ICACHE_FLASH_ATTR second_tick(void)
 {
-	struct tm* dt;
-
 	current_timestamp = sntp_get_current_timestamp();
 	if(current_timestamp != 0)
 	{
+		// Prepare code
+		if(get_nbmins_before_alarm() <= 30 && get_nbmins_before_alarm() > 0 && !alarm_in_progress)
+		{
+			pwm_set_duty(stored_prep[2], LED_R_CHANNEL);
+			pwm_set_duty(0, LED_G_CHANNEL);
+			pwm_set_duty(0, LED_B_CHANNEL);
+			pwm_start();
+		}
+		else if(get_nbmins_before_alarm() <= 60 && get_nbmins_before_alarm() > 0 && !alarm_in_progress)
+		{
+			pwm_set_duty(0, LED_R_CHANNEL);
+			pwm_set_duty(stored_prep[1], LED_G_CHANNEL);
+			pwm_set_duty(0, LED_B_CHANNEL);
+			pwm_start();
+		}
+		else if(get_nbmins_before_alarm() <= 120 && get_nbmins_before_alarm() > 0 && !alarm_in_progress)
+		{
+			pwm_set_duty(0, LED_R_CHANNEL);
+			pwm_set_duty(0, LED_G_CHANNEL);
+			pwm_set_duty(stored_prep[0], LED_B_CHANNEL);
+			pwm_start();
+		}		
+
 		if(time_fetched_light == true)
 		{
 			pwm_set_duty(0, LED_G_CHANNEL);
@@ -353,21 +443,30 @@ void ICACHE_FLASH_ATTR second_tick(void)
 			pwm_set_duty(MAX_DUTY_C, LED_G_CHANNEL);
 			pwm_start();
 		}
-		dt = gmtime(&current_timestamp);
-		applyTZ(dt, 1);
+
+		current_time_dt = gmtime(&current_timestamp);
+		applyTZ(current_time_dt, 1);
 		//os_printf("%02d:%02d:%02d\r\n", dt->tm_hour, dt->tm_min, dt->tm_sec);
-		ets_sprintf(string_current_time, "%02d:%02d:%02d\r\n", dt->tm_hour, dt->tm_min, dt->tm_sec);
-		ets_sprintf(string_current_datetime, "%02d:%02d:%02d %02d/%02d/%02d\r\n", dt->tm_hour, dt->tm_min, dt->tm_sec, dt->tm_mday, dt->tm_mon + 1, dt->tm_year + 1900);
+		ets_sprintf(string_current_time, "%02d:%02d:%02d\r\n", current_time_dt->tm_hour, current_time_dt->tm_min, current_time_dt->tm_sec);
+		ets_sprintf(string_current_datetime, "%02d:%02d:%02d %02d/%02d/%02d\r\n", current_time_dt->tm_hour, current_time_dt->tm_min, current_time_dt->tm_sec, current_time_dt->tm_mday, current_time_dt->tm_mon + 1, current_time_dt->tm_year + 1900);
 
 		// Alarm code
-		if(stored_alarmdays[dt->tm_wday] && dt->tm_hour == stored_alarmtime[0] && dt->tm_min == stored_alarmtime[1])
+		if(stored_alarmdays[current_time_dt->tm_wday] && current_time_dt->tm_hour == stored_alarmtime[0] && current_time_dt->tm_min == stored_alarmtime[1])
 		{
 			if(!alarm_in_progress && !alarm_ack)
 			{
-				alarm_in_progress = true;					
-				os_timer_disarm(&timer_alarmanim);
-				os_timer_setfn(&timer_alarmanim, (os_timer_func_t*)alarm_anim_tick, NULL);
-				os_timer_arm(&timer_alarmanim, ALARM_ANIM_MS, 1);
+				if(alarm_discard)
+				{
+					alarm_discard = false;
+					alarm_ack = true;
+				}
+				else
+				{
+					alarm_in_progress = true;					
+					os_timer_disarm(&timer_alarmanim);
+					os_timer_setfn(&timer_alarmanim, (os_timer_func_t*)alarm_anim_tick, NULL);
+					os_timer_arm(&timer_alarmanim, ALARM_ANIM_MS, 1);
+				}
 			}
 		}
 		else
@@ -382,7 +481,8 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	stdoutInit();
 	captdnsInit();
 
-/*	struct station_config stationConf; 		// Station conf struct
+	/*
+	struct station_config stationConf; 		// Station conf struct
 	wifi_set_opmode(0x1); 				// Set station mode
 	os_memcpy(&stationConf.ssid, ssid, 32); 	// Set settings
 	os_memcpy(&stationConf.password, password, 64); // Set settings

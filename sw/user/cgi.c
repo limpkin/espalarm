@@ -36,23 +36,40 @@ int ICACHE_FLASH_ATTR cgiLed(HttpdConnData *connData) {
 	len=httpdFindArg(connData->post->buff, "redval", buff, sizeof(buff));
 	if (len>0) {
 		uint32_t dutyc = atoi(buff);
-		pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_R_CHANNEL);
+		//pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_R_CHANNEL);
+		pwm_set_duty(dutyc, LED_R_CHANNEL);
 	}
 
 	len=httpdFindArg(connData->post->buff, "blueval", buff, sizeof(buff));
 	if (len>0) {
 		uint32_t dutyc = atoi(buff);
-		pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_B_CHANNEL);
+		//pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_B_CHANNEL);
+		pwm_set_duty(dutyc, LED_B_CHANNEL);
 	}
 
 	len=httpdFindArg(connData->post->buff, "greenval", buff, sizeof(buff));
 	if (len>0) {
 		uint32_t dutyc = atoi(buff);
-		pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_G_CHANNEL);
+		//pwm_set_duty(dutyc * MAX_DUTY_C / 100, LED_G_CHANNEL);
+		pwm_set_duty(dutyc, LED_G_CHANNEL);
 		pwm_start();
 	}
 
 	httpdRedirect(connData, "led.tpl");
+	return HTTPD_CGI_DONE;
+}
+
+
+//Alarm discard Cgi
+int ICACHE_FLASH_ATTR discardcgiAlarm(HttpdConnData *connData) {
+	
+	if (connData->conn==NULL) {
+		//Connection aborted. Clean up.
+		return HTTPD_CGI_DONE;
+	}
+
+	discard_next_alarm();
+	httpdRedirect(connData, "alarm.tpl");
 	return HTTPD_CGI_DONE;
 }
 
@@ -63,6 +80,8 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	char buff[1024];
 	bool alarmdays[7];
 	uint32_t alarmtime[2];
+	uint32_t alarmpct[3];
+	uint32_t alarmprep[3];
 	
 	if (connData->conn==NULL) {
 		//Connection aborted. Clean up.
@@ -78,7 +97,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[1] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "tuesday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -88,7 +106,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[2] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "wednesday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -98,7 +115,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[3] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "thursday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -108,7 +124,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[4] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "friday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -118,7 +133,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[5] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "saturday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -128,7 +142,6 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[6] = false;
 	}
-
 	len=httpdFindArg(connData->post->buff, "sunday", buff, sizeof(buff));
 	if (len>0) 
 	{
@@ -138,23 +151,52 @@ int ICACHE_FLASH_ATTR cgiAlarm(HttpdConnData *connData) {
 	{
 		alarmdays[0] = false;
 	}
-
-	for(uint8_t i = 0; i < 7; i++)
-		os_printf("%02d\r\n", alarmdays[i]);
 	
 	len=httpdFindArg(connData->post->buff, "hours", buff, sizeof(buff));
 	if (len>0) 
 	{
 		alarmtime[0] = atoi(buff);
-	}
-	
+	}	
 	len=httpdFindArg(connData->post->buff, "minutes", buff, sizeof(buff));
 	if (len>0) 
 	{
 		alarmtime[1] = atoi(buff);
 	}
+	
+	len=httpdFindArg(connData->post->buff, "redpct", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmpct[0] = atoi(buff);
+	}	
+	len=httpdFindArg(connData->post->buff, "greenpct", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmpct[1] = atoi(buff);
+	}	
+	len=httpdFindArg(connData->post->buff, "bluepct", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmpct[2] = atoi(buff);
+	}
+	
+	len=httpdFindArg(connData->post->buff, "blueprep", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmprep[0] = atoi(buff);
+	}	
+	len=httpdFindArg(connData->post->buff, "greenprep", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmprep[1] = atoi(buff);
+	}	
+	len=httpdFindArg(connData->post->buff, "redprep", buff, sizeof(buff));
+	if (len>0) 
+	{
+		alarmprep[2] = atoi(buff);
+	}
 
-	store_alarm_settings(alarmdays, alarmtime);
+
+	store_alarm_settings(alarmdays, alarmtime, alarmpct, alarmprep);
 
 	httpdRedirect(connData, "alarm.tpl");
 	return HTTPD_CGI_DONE;
@@ -195,6 +237,12 @@ int ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) {
 		return HTTPD_CGI_DONE;
 	}
 
+	if (os_strcmp(token, "maxpwm")==0) {
+		os_sprintf(buff, "%d", MAX_DUTY_C);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+
 	httpdSend(connData, buff, -1);
 	return HTTPD_CGI_DONE;
 }
@@ -203,12 +251,16 @@ int ICACHE_FLASH_ATTR tplLed(HttpdConnData *connData, char *token, void **arg) {
 int ICACHE_FLASH_ATTR tplAlarm(HttpdConnData *connData, char *token, void **arg) {
 	bool* alarmdays;
 	uint32_t* alarmtime;
+	uint32_t* alarmcolor;
+	uint32_t* alarmprep;
 	char buff[128];
 	if (token==NULL) return HTTPD_CGI_DONE;
 
 	os_strcpy(buff, "Unknown");
 	alarmdays = get_alarmdays();
 	alarmtime = get_alarmtime();
+	alarmcolor = get_alarmcolor();
+	alarmprep = get_alarmprep();
 
 	if (os_strcmp(token, "monday") == 0)
 	{
@@ -301,6 +353,55 @@ int ICACHE_FLASH_ATTR tplAlarm(HttpdConnData *connData, char *token, void **arg)
 
 	if (os_strcmp(token, "curtime")==0) {
 		httpdSend(connData, main_get_datetime(), -1);
+		return HTTPD_CGI_DONE;
+	}
+
+	if (os_strcmp(token, "redpct")==0) {
+		os_sprintf(buff, "%d", alarmcolor[0]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+	if (os_strcmp(token, "bluepct")==0) {
+		os_sprintf(buff, "%d", alarmcolor[2]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+	if (os_strcmp(token, "greenpct")==0) {
+		os_sprintf(buff, "%d", alarmcolor[1]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+
+	if (os_strcmp(token, "blueprep")==0) {
+		os_sprintf(buff, "%d", alarmprep[0]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+	if (os_strcmp(token, "greenprep")==0) {
+		os_sprintf(buff, "%d", alarmprep[1]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+	if (os_strcmp(token, "redprep")==0) {
+		os_sprintf(buff, "%d", alarmprep[2]);
+		httpdSend(connData, buff, -1);
+		return HTTPD_CGI_DONE;
+	}
+
+	if (os_strcmp(token, "timebeforealarm")==0) 
+	{
+		int32_t nb_mins = get_nbmins_before_alarm();
+
+		if(nb_mins < 0)
+		{
+			os_sprintf(buff, "Never");
+		}
+		else
+		{
+			os_sprintf(buff, "%d days %d hours %d minutes", nb_mins/(60*24), (nb_mins%(60*24))/60, (nb_mins%(60*24))%60);
+		}
+		
+		httpdSend(connData, buff, -1);
 		return HTTPD_CGI_DONE;
 	}
 

@@ -26,13 +26,18 @@
 #define PWM_PER		5000		// Approximately 200Hz
 #define MAX_DUTY_C	PWM_PER*1000/45 // Cf SDK, approx 111111
 
-#define ALARM_ANIM_MS	33
-#define ALARM_ANIM_FADE_INC	50
+#define ALARM_ANIM_MS		20
+#define ALARM_ANIM_FADE_INC	1
+#define ALARM_ANIM_FADE_DIV	1000
 
 char* ICACHE_FLASH_ATTR main_get_datetime(void);
 char* ICACHE_FLASH_ATTR main_get_time(void);
-void ICACHE_FLASH_ATTR store_alarm_settings(bool* days, uint32_t* time);
+void ICACHE_FLASH_ATTR store_alarm_settings(bool* days, uint32_t* time, uint32_t* color, uint32_t* prep);
+int32_t ICACHE_FLASH_ATTR get_nbmins_before_alarm(void);
 bool* ICACHE_FLASH_ATTR get_alarmdays(void);
 uint32_t* ICACHE_FLASH_ATTR get_alarmtime(void);
+uint32_t* ICACHE_FLASH_ATTR get_alarmcolor(void);
+uint32_t* ICACHE_FLASH_ATTR get_alarmprep(void);
+void ICACHE_FLASH_ATTR discard_next_alarm(void);
 
 #endif
