@@ -38,6 +38,7 @@ static char string_current_time[100];
 static time_t current_timestamp;
 static os_timer_t timer_second;
 static os_timer_t timer_alarmanim;
+static os_timer_t timer_time_output;
 typedef struct tm tm_struct;
 static bool alarm_discard = false;
 static bool time_fetched = false;
@@ -402,6 +403,69 @@ void ICACHE_FLASH_ATTR discard_next_alarm(void)
 	pwm_start();
 }
 
+static uint32_t time_output_sm = 100;
+static uint32_t time_output_subsm = 0;
+static uint32_t time_output_counter = 0;
+static uint32_t nb_up_presses[4];
+static bool up_pressed = false;
+
+static uint32_t gpio_set_seq[] = {	BIT0,	0, 	BIT2,	0,	0,	BIT2,	0, 	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	};
+static uint32_t gpio_clear_seq[] = {	0, 	BIT0,	0,	BIT2,	0,	0,	BIT2,	0,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	0,	BIT2,	};
+static uint8_t	timer_seq[] = {		0, 	0, 	80,	26,	0,	0,	0,	0,	5,	0,	5,	0,	15,	0,	5,	0,	5,	0,	5,	0,	5,	0,	5,	0,	5,	0,	5,	0,	5,	0,	5,	0,	15,	0,	};
+				//	RESET		SET TIME	H	go to min	M	go to 24h	go to alarm	A1H		A1M		A1		A2H		A2M		A2		A3H		A3M		A3		SD		change display
+
+void ICACHE_FLASH_ATTR time_output_func(void)
+{
+	//gpio_output_set(BIT0, 0, BIT0, 0); 			// Set GPIO0 high output (reset)
+	//gpio_output_set(BIT2, 0, BIT2, 0); 			// Set GPIO2 high output (set)
+	//gpio_output_set(BIT15, 0, BIT15, 0); 			// Set GPIO15 high output (up)
+
+	if(time_output_sm < (sizeof(gpio_set_seq)/sizeof(gpio_set_seq[0])))
+	{
+		if(time_output_sm == 4 || time_output_sm == 7)
+		{			
+			if(nb_up_presses[time_output_sm-4] == 0)
+			{
+				time_output_sm++;
+			}
+			else
+			{
+				if(up_pressed)
+				{
+					gpio_output_set(0, BIT15, BIT15, 0);
+					nb_up_presses[time_output_sm-4]--;
+					up_pressed = false;
+				}
+				else
+				{
+					gpio_output_set(BIT15, 0, BIT15, 0);
+					up_pressed = true;
+				}
+			}
+		}
+		else
+		{
+			if(time_output_counter++ > timer_seq[time_output_sm])
+			{
+				gpio_output_set(gpio_set_seq[time_output_sm], gpio_clear_seq[time_output_sm], gpio_set_seq[time_output_sm]|gpio_clear_seq[time_output_sm], 0);
+				time_output_counter = 0;
+				time_output_sm++;
+			}
+
+			if(time_output_sm == 4)
+			{
+				// presses for current time
+				nb_up_presses[0] = (current_time_dt->tm_hour + 12)%24;
+				nb_up_presses[3] = current_time_dt->tm_min;
+			}
+		}
+	}
+	else
+	{
+	}
+	time_output_subsm++;
+}
+
 void ICACHE_FLASH_ATTR second_tick(void)
 {
 	current_timestamp = sntp_get_current_timestamp();
@@ -438,6 +502,7 @@ void ICACHE_FLASH_ATTR second_tick(void)
 		}
 		if(time_fetched == false)
 		{
+			time_output_sm = 0;
 			time_fetched = true;
 			time_fetched_light = true;
 			pwm_set_duty(MAX_DUTY_C, LED_G_CHANNEL);
@@ -473,6 +538,12 @@ void ICACHE_FLASH_ATTR second_tick(void)
 		{
 			alarm_ack = false;
 		}
+
+		// Periodically reset the output time
+		if(current_time_dt->tm_hour == 4 && current_time_dt->tm_min == 0 && current_time_dt->tm_sec == 0)
+		{
+			time_output_sm = 0;
+		}
 	}
 }
 
@@ -481,8 +552,7 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	stdoutInit();
 	captdnsInit();
 
-	/*
-	struct station_config stationConf; 		// Station conf struct
+	/*struct station_config stationConf; 		// Station conf struct
 	wifi_set_opmode(0x1); 				// Set station mode
 	os_memcpy(&stationConf.ssid, ssid, 32); 	// Set settings
 	os_memcpy(&stationConf.password, password, 64); // Set settings
@@ -520,8 +590,19 @@ void ICACHE_FLASH_ATTR user_init(void) {
 	os_timer_setfn(&timer_second, (os_timer_func_t*)second_tick, NULL);
 	os_timer_arm(&timer_second, 1000, 1);
 
-	// Gpio16
+	// Time output timer
+	os_timer_disarm(&timer_time_output);
+	os_timer_setfn(&timer_time_output, (os_timer_func_t*)time_output_func, NULL);
+	os_timer_arm(&timer_time_output, 100, 1);
+
+	// GPIOs
 	gpio16_input_conf();
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO0_U, FUNC_GPIO0); 	// Set GPIO2 function
+	gpio_output_set(0, BIT0, BIT0, 0); 			// Set GPIO2 low output
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO2_U, FUNC_GPIO2); 	// Set GPIO2 function
+	gpio_output_set(0, BIT2, BIT2, 0); 			// Set GPIO2 low output
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, FUNC_GPIO15); 	// Set GPIO15 function
+	gpio_output_set(0, BIT15, BIT15, 0); 			// Set GPIO15 low output
 
 	// Pwm Init
 	uint32 io_info[][3] = {{PWM_0_OUT_IO_MUX,PWM_0_OUT_IO_FUNC,PWM_0_OUT_IO_NUM},{PWM_1_OUT_IO_MUX,PWM_1_OUT_IO_FUNC,PWM_1_OUT_IO_NUM},{PWM_2_OUT_IO_MUX,PWM_2_OUT_IO_FUNC,PWM_2_OUT_IO_NUM}};
